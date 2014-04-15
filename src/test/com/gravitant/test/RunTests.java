@@ -274,7 +274,7 @@ public class RunTests{
 						    action = testStepRow[4];
 				        	util.setCurrentTestStep(testStep);
 				        	util.setCurrentTestStepNumber(testStepNumber);
-						    testData = util.getTestData(testStepObjectName);
+						    this.testData = util.getTestData(testStepObjectName);
 						    util.executeAction(testStepPageName, testStepObjectName, action, testData);
 						    if(util.errorFlag==true){break;}
 				    	}

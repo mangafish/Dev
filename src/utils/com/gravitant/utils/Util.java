@@ -173,6 +173,7 @@ public class Util extends CSV_Reader{
     private String environment = null;
     private String browserType = null;
     private String closeBrowser = null;
+    private boolean isMessageDisplayed = false;
     int currentTestStepNumber = 0;
     int currentTestStepRow;
     int totalTestNumber = 0;
@@ -237,8 +238,12 @@ public class Util extends CSV_Reader{
 		String[] splitCurrentLine = currentLine.split("data=");
 		String componentAndTestData = splitCurrentLine[1];
 		String[] splitComponentAndTestData = componentAndTestData.split("/");
-		this.testDataFileName = splitComponentAndTestData[1];
+		String testDataFileName = splitComponentAndTestData[1];
+		this.setTestDataFileName(testDataFileName);
 		return testDataFileName;
+	}
+	public void setTestDataFileName(String testDataFileName){
+		this.testDataFileName = testDataFileName;
 	}
 	public String findFile(String parentDirectory, String fileToFind){
 		fileToFind = fileToFind.toLowerCase();
@@ -568,23 +573,28 @@ public class Util extends CSV_Reader{
 		automatedTestsFolderPath  = path;
 	}*/
 	public String getTestData(String objectName) throws Exception{
-		if(this.verifyFileExists(componentName, testDataFileName)==true){
-	    	CSVReader testDataFileReader = new CSVReader(new FileReader(this.getTestDataFilePath(testDataFileName)));
-	        String[] testDataRow = null;
-	        while((testDataRow = testDataFileReader.readNext())!= null){
-	        	testDataFileObjectName = testDataRow[0];
-	        	if(!testDataFileObjectName.equals("Object_Name") && testDataFileObjectName.equals(objectName)){
-	       			testData = testDataRow[1];
-	       			if(testData!=null && testData.substring(0,1).equals("\"")){
-	       				testData = testData.replaceAll("\""," ").trim();
-		        		//System.out.println(testData);
-		        	}
-	    			break;
-	        	}
-	        }
-	        testDataFileReader.close();
+		String testData = null;
+		if(objectName.length()<1){
+			this.testData = testData;
+		}else{
+			if(this.verifyFileExists(componentName, testDataFileName)==true){
+		    	CSVReader testDataFileReader = new CSVReader(new FileReader(this.getTestDataFilePath(testDataFileName)));
+		        String[] testDataRow = null;
+		        while((testDataRow = testDataFileReader.readNext())!= null){
+		        	this.testDataFileObjectName = testDataRow[0];
+		        	if(!testDataFileObjectName.equals("Object_Name") && testDataFileObjectName.equals(objectName)){
+		       			this.testData = testDataRow[1];
+		       			if(testData!=null && testData.substring(0,1).equals("\"")){
+		       				this.testData = testData.replaceAll("\""," ").trim();
+			        		//System.out.println(testData);
+			        	}
+		    			break;
+		        	}else{this.testData = testData;}
+		        }
+		        testDataFileReader.close();
+			}
 		}
-		return testData;
+		return this.testData;
 	}
 	public String getTestData(String pageName, String objectName, int dataTestIteration) throws Exception{
 		testDataFileName = this.getTestDataFilePath(pageName);
@@ -638,6 +648,10 @@ public class Util extends CSV_Reader{
 				case "typeinput":
 					LOGS.info("> Entering text in: " + objectName + " on " + pageName);
 					enterText(locator_Type, locator_Value, testData);
+					break;
+				case "re-typeinput":
+					LOGS.info("> Entering text in: " + objectName + " on " + pageName);
+					reEnterText(locator_Type, locator_Value, testData);
 					break;
 				case "clicklink":
 					LOGS.info("> Clicking link: " + objectName + " on " + pageName);
@@ -748,9 +762,13 @@ public class Util extends CSV_Reader{
 					LOGS.info("> Clicking Logo");
 					openHelpPopup();
 					break;
-				case "logout":
+				case "logout"://checkIfMessageDisplays
 					LOGS.info("> Clicking Logo");
 					logout();
+					break;
+				case "checkIfMessageDisplays":
+					LOGS.info("> Checking if " + testData + " displays");
+					checkIfMessageDisplays(locator_Type, locator_Value,testData);
 					break;
 				case "changepassword":
 					LOGS.info("> Clicking Logo");
@@ -1153,6 +1171,28 @@ public class Util extends CSV_Reader{
 			}
 		}
 	}
+	public void reEnterText(String objectLocatorType, String locatorValue, String text) throws IOException, InterruptedException{
+		int incrementedNumber = 0;
+		String textWithoutNumbers = text.replaceAll("[0-9]","");
+		String textWithIncrementedNumber = null;
+		String numberInText = null;
+		if(this.isMessageDisplayed = true){
+	        for(int i=0; i<=text.length();i++){
+	            if(Character.isDigit(text.charAt(i))){
+	            	numberInText = numberInText + text.charAt(i);
+	            }
+	        }
+	        incrementedNumber = Integer.parseInt(numberInText) + 1;
+	        textWithIncrementedNumber = textWithoutNumbers + incrementedNumber;
+			WebElement textBox = driver.findElement(findObject(objectLocatorType, locatorValue));
+			try{
+				textBox.clear();
+				textBox.sendKeys(textWithIncrementedNumber);
+			}catch(Exception e1){
+				textBox.sendKeys(textWithIncrementedNumber);
+			}
+		}
+	}
 	public void selectListBoxItem(String objectLocatorType, final String locatorValue, String optionToSelect) throws IOException, InterruptedException{
 		if(waitForObject("Select box", objectLocatorType, locatorValue)== true){
 			Thread.sleep(4000);
@@ -1350,7 +1390,20 @@ public class Util extends CSV_Reader{
 			}
 		}
 	}
-
+	public void checkIfMessageDisplays(String objectLocatorType, String locatorValue, String testData) throws IOException{
+		if(waitForObject("Text", objectLocatorType, locatorValue) == true){
+			String textToVerify = driver.findElement(findObject(objectLocatorType, locatorValue)).getText().trim().toLowerCase().toString().replaceAll(" ", "");
+			//System.out.println(textToVerify);
+			String testDataM = testData.trim().toLowerCase().toString().replaceAll("\\s","");
+			//System.out.println(testDataM);
+			if(textToVerify.equals(testDataM)){
+				this.isMessageDisplayed = true;
+				/*StringSelection stringSelection = new StringSelection("true");
+				Toolkit.getDefaultToolkit().getSystemClipboard().setContents(stringSelection, null);
+		        this.pasteValueFromClipboard(objectLocatorType, locatorValue);*/
+			}
+		}
+	}
 	public   void scrollDown(){
 		JavascriptExecutor jse = (JavascriptExecutor)driver;
 		jse.executeScript("window.scrollBy(0,500)", "");
