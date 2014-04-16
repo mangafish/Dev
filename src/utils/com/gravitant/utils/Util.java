@@ -173,7 +173,7 @@ public class Util extends CSV_Reader{
     private String environment = null;
     private String browserType = null;
     private String closeBrowser = null;
-    private boolean isMessageDisplayed = false;
+    private boolean isErrorMessageDisplayed = false;
     int currentTestStepNumber = 0;
     int currentTestStepRow;
     int totalTestNumber = 0;
@@ -630,31 +630,45 @@ public class Util extends CSV_Reader{
         testDataFileReader.close();
 		return dataTestData;
 	}
-	public  void executeAction(String pageName, String objectName, String action, String testData) throws Exception{
-		if(pageName.length() > 0){
-			objectInfo = this.getObjectInfo(pageName, objectName);
+	public void executeAction(String pageName, String objectName, String action) throws Exception{
+		if(objectName.contains("[") && isErrorMessageDisplayed==true){
+			String[] objectNames = objectName.replace("[", "").replace("]", "").split(",");
+			String[] actions = action.replace("[", "").replace("]", "").split(",");
+			for(int i=0;i<=objectNames.length-1;i++){
+				testData = this.getTestData(objectNames[i]);
+				objectInfo = this.getObjectInfo(pageName, objectNames[i]);
+				locator_Type = this.getObjectLocatorType(objectInfo); 
+				locator_Value = this.getObjectLocatorValue(objectInfo);
+				this.getAction(objectNames[i], actions[i], testData);
+			}
+	    }else{
+	    	testData = this.getTestData(objectName);
+	    	objectInfo = this.getObjectInfo(pageName, objectName);
 			locator_Type = this.getObjectLocatorType(objectInfo);
 			locator_Value = this.getObjectLocatorValue(objectInfo);
-		}
-			switch(action.toLowerCase()){
+	    	this.getAction(objectName, action, testData);
+	    }
+	}
+	public void getAction(String objectName, String action, String testData) throws Exception{
+		switch(action.toLowerCase()){
 				case "clickbutton":
-					LOGS.info("> Clicking button: " + objectName + " on " + pageName);
+					LOGS.info("> Clicking button: " + objectName + " on " + this.currentPageName);
 					clickButton(locator_Type, locator_Value);
 					break;
 				case "clickbuttonwithtext":
-					LOGS.info("> Clicking button: " + objectName + " on " + pageName);
+					LOGS.info("> Clicking button: " + objectName + " on " + this.currentPageName);
 					clickButtonWithText(testData);
 					break;
 				case "typeinput":
-					LOGS.info("> Entering text in: " + objectName + " on " + pageName);
+					LOGS.info("> Entering text in: " + objectName + " on " + this.currentPageName);
 					enterText(locator_Type, locator_Value, testData);
 					break;
 				case "re-typeinput":
-					LOGS.info("> Entering text in: " + objectName + " on " + pageName);
-					reEnterText(locator_Type, locator_Value, testData);
+					LOGS.info("> Entering text in: " + objectName + " on " + this.currentPageName);
+					reEnterText(locator_Type, locator_Value);
 					break;
 				case "clicklink":
-					LOGS.info("> Clicking link: " + objectName + " on " + pageName);
+					LOGS.info("> Clicking link: " + objectName + " on " + this.currentPageName);
 					clickLink(locator_Type, locator_Value);
 					break;
 				case "selectlistitem":
@@ -699,19 +713,19 @@ public class Util extends CSV_Reader{
 					scrollDown();
 					break;
 				case "savescreenshot":
-					LOGS.info("> Capturing screenshot: " + pageName);
+					LOGS.info("> Capturing screenshot of: "  + this.currentPageName);
 					captureScreen(pageName);
 					break;
 				case "getcelldata":
-					LOGS.info("> Getting cell data: " + pageName);
+					LOGS.info("> Getting cell data");
 					getCellData(locator_Type, locator_Value);
 					break;
 				case "clickmenuitem":
-					LOGS.info("> Clicking menu item: " + objectName + " on " + pageName);
+					LOGS.info("> Clicking menu item: " + objectName + " on " + this.currentPageName);
 					clickMenuItem(locator_Type, locator_Value);
 					break;
 				case "clicklistmenuitem":
-					LOGS.info("> Clicking menu item: " + objectName + " on " + pageName);
+					LOGS.info("> Clicking menu item: " + objectName + " on " + this.currentPageName);
 					clickListMenuItem(locator_Type, locator_Value, testData);
 					break;
 				case "savefile":
@@ -719,11 +733,11 @@ public class Util extends CSV_Reader{
 					saveFile();
 					break;
 				case "checkcheckbox":
-					LOGS.info("> Checking check box");
+					LOGS.info("> Checking check box on " + this.currentPageName);
 					checkCheckBox(locator_Type, locator_Value);
 					break;
 				case "uncheckcheckbox":
-					LOGS.info("> Un-checking check box");
+					LOGS.info("> Un-checking check box on " + this.currentPageName);
 					unCheckCheckBox(locator_Type, locator_Value);
 					break;
 				case "getactivationcode":
@@ -762,13 +776,13 @@ public class Util extends CSV_Reader{
 					LOGS.info("> Clicking Logo");
 					openHelpPopup();
 					break;
-				case "logout"://checkIfMessageDisplays
+				case "logout":
 					LOGS.info("> Clicking Logo");
 					logout();
 					break;
-				case "checkIfMessageDisplays":
-					LOGS.info("> Checking if " + testData + " displays");
-					checkIfMessageDisplays(locator_Type, locator_Value,testData);
+				case "checkiferrormessagedisplays":
+					LOGS.info("> Checking if error message displays on " + this.currentPageName);
+					checkIfErrorMessageDisplays(locator_Type, locator_Value,testData);
 					break;
 				case "changepassword":
 					LOGS.info("> Clicking Logo");
@@ -1171,26 +1185,28 @@ public class Util extends CSV_Reader{
 			}
 		}
 	}
-	public void reEnterText(String objectLocatorType, String locatorValue, String text) throws IOException, InterruptedException{
+	public void reEnterText(String objectLocatorType, String locatorValue) throws IOException, InterruptedException{
+		WebElement textBox = driver.findElement(findObject(objectLocatorType, locatorValue));
+		String textInTextBox = textBox.getAttribute("value");
 		int incrementedNumber = 0;
-		String textWithoutNumbers = text.replaceAll("[0-9]","");
+		String textWithoutNumbers = textInTextBox.replaceAll("[0-9]","");
 		String textWithIncrementedNumber = null;
 		String numberInText = null;
-		if(this.isMessageDisplayed = true){
-	        for(int i=0; i<=text.length();i++){
-	            if(Character.isDigit(text.charAt(i))){
-	            	numberInText = numberInText + text.charAt(i);
-	            }
-	        }
-	        incrementedNumber = Integer.parseInt(numberInText) + 1;
-	        textWithIncrementedNumber = textWithoutNumbers + incrementedNumber;
-			WebElement textBox = driver.findElement(findObject(objectLocatorType, locatorValue));
-			try{
-				textBox.clear();
-				textBox.sendKeys(textWithIncrementedNumber);
-			}catch(Exception e1){
-				textBox.sendKeys(textWithIncrementedNumber);
-			}
+		int charsInText = textInTextBox.length();
+        for(int i=0; i<=charsInText-1;i++){
+            if(Character.isDigit(textInTextBox.charAt(i))){
+            	numberInText = numberInText + textInTextBox.charAt(i);
+            }
+        }
+        if(numberInText!=null){
+        	incrementedNumber = Integer.parseInt(numberInText) + 1;
+        }else{incrementedNumber = incrementedNumber + 1;}
+        textWithIncrementedNumber = textWithoutNumbers + incrementedNumber;
+		try{
+			textBox.clear();
+			textBox.sendKeys(textWithIncrementedNumber);
+		}catch(Exception e1){
+			textBox.sendKeys(textWithIncrementedNumber);
 		}
 	}
 	public void selectListBoxItem(String objectLocatorType, final String locatorValue, String optionToSelect) throws IOException, InterruptedException{
@@ -1390,17 +1406,17 @@ public class Util extends CSV_Reader{
 			}
 		}
 	}
-	public void checkIfMessageDisplays(String objectLocatorType, String locatorValue, String testData) throws IOException{
+	public void checkIfErrorMessageDisplays(String objectLocatorType, String locatorValue, String testData) throws IOException{
 		if(waitForObject("Text", objectLocatorType, locatorValue) == true){
 			String textToVerify = driver.findElement(findObject(objectLocatorType, locatorValue)).getText().trim().toLowerCase().toString().replaceAll(" ", "");
 			//System.out.println(textToVerify);
-			String testDataM = testData.trim().toLowerCase().toString().replaceAll("\\s","");
+			String cleanTestData = testData.trim().toLowerCase().toString().replaceAll("\\s","");
 			//System.out.println(testDataM);
-			if(textToVerify.equals(testDataM)){
-				this.isMessageDisplayed = true;
+			if(textToVerify.equals(cleanTestData)){
+				this.isErrorMessageDisplayed = true;
 				/*StringSelection stringSelection = new StringSelection("true");
-				Toolkit.getDefaultToolkit().getSystemClipboard().setContents(stringSelection, null);
-		        this.pasteValueFromClipboard(objectLocatorType, locatorValue);*/
+				Toolkit.getDefaultToolkit().getSystemClipboard().setContents(stringSelection, null);*/
+		        //this.pasteValueFromClipboard(objectLocatorType, locatorValue);
 			}
 		}
 	}

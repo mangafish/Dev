@@ -213,7 +213,7 @@ public class RunTests{
 						    	util.setCurrentTestStepNumber(j);
 						    }else{
 						    	testData = util.getTestData(testStepObjectName);
-							    util.executeAction(testStepPageName, testStepObjectName, action, testData);
+							    util.executeAction(testStepPageName, testStepObjectName, action);
 							    if(util.errorFlag==true){break;}
 						    }
 				    	}
@@ -236,7 +236,7 @@ public class RunTests{
 									    testStep = testStepRow[1];
 							        	util.setCurrentTestStep(testStep);
 									    testData = util.getTestData(testStepPageName, testStepObjectName, currentDatatestIteration);
-									    util.executeAction(testStepPageName, testStepObjectName, action, testData);
+									    util.executeAction(testStepPageName, testStepObjectName, action);
 									    if(util.errorFlag==true){break;}
 							    	}
 			    			}
@@ -255,7 +255,7 @@ public class RunTests{
 							    testStep = testStepRow[1];
 					        	util.setCurrentTestStep(testStep);
 							    testData = util.getTestData(testStepObjectName);
-							    util.executeAction(testStepPageName, testStepObjectName, action, testData);
+							    util.executeAction(testStepPageName, testStepObjectName, action);
 							    if(util.errorFlag==true){break;}
 				    	}
 					}
@@ -274,8 +274,8 @@ public class RunTests{
 						    action = testStepRow[4];
 				        	util.setCurrentTestStep(testStep);
 				        	util.setCurrentTestStepNumber(testStepNumber);
-						    this.testData = util.getTestData(testStepObjectName);
-						    util.executeAction(testStepPageName, testStepObjectName, action, testData);
+				        	util.setCurrentPageName(testStepPageName);
+						    util.executeAction(testStepPageName, testStepObjectName, action);
 						    if(util.errorFlag==true){break;}
 				    	}
 					}
