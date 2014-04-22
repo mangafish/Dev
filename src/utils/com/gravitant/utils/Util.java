@@ -631,16 +631,28 @@ public class Util extends CSV_Reader{
 		return dataTestData;
 	}
 	public void executeAction(String pageName, String objectName, String action) throws Exception{
-		if(objectName.contains("[") && isErrorMessageDisplayed==true){
+		//if(objectName.contains("[") && this.isConditionalAction(action)==true){
+		if(objectName.contains("[")){
 			String[] objectNames = objectName.replace("[", "").replace("]", "").split(",");
-			String[] actions = action.replace("[", "").replace("]", "").split(",");
-			for(int i=0;i<=objectNames.length-1;i++){
-				testData = this.getTestData(objectNames[i]);
-				objectInfo = this.getObjectInfo(pageName, objectNames[i]);
-				locator_Type = this.getObjectLocatorType(objectInfo); 
-				locator_Value = this.getObjectLocatorValue(objectInfo);
-				this.getAction(objectNames[i], actions[i], testData);
-			}
+			String[] actions = action.replace("[", "").replace("]","").split(",");
+			this.runConditionalAction(objectNames, actions);
+			/*if(isErrorMessageDisplayed==true){
+				for(int i=1;i<=objectNames.length-1;i++){
+					testData = this.getTestData(objectNames[i]);
+					objectInfo = this.getObjectInfo(pageName, objectNames[i]);
+					locator_Type = this.getObjectLocatorType(objectInfo); 
+					locator_Value = this.getObjectLocatorValue(objectInfo);
+					this.getAction(objectNames[i], actions[i], testData);
+				}
+			}else{
+				for(int i=0;i<=objectNames.length-1;i++){
+					testData = this.getTestData(objectNames[i]);
+					objectInfo = this.getObjectInfo(pageName, objectNames[i]);
+					locator_Type = this.getObjectLocatorType(objectInfo); 
+					locator_Value = this.getObjectLocatorValue(objectInfo);
+					this.getAction(objectNames[i], actions[i], testData);
+				}
+			}*/
 	    }else{
 	    	testData = this.getTestData(objectName);
 	    	objectInfo = this.getObjectInfo(pageName, objectName);
@@ -648,6 +660,31 @@ public class Util extends CSV_Reader{
 			locator_Value = this.getObjectLocatorValue(objectInfo);
 	    	this.getAction(objectName, action, testData);
 	    }
+	}
+	/*public boolean isConditionalAction(String action){
+		boolean isCompoundAction = false;
+		if(action.toLowerCase().contains("if")){
+			isCompoundAction = true;
+		}
+		return isCompoundAction;
+	}*/
+	public void runConditionalAction(String[]objectNames, String[] actions) throws Exception{
+		objectInfo = this.getObjectInfo(this.currentPageName, objectNames[0]);
+		locator_Type = this.getObjectLocatorType(objectInfo); 
+		locator_Value = this.getObjectLocatorValue(objectInfo);
+		testData = this.getTestData(objectNames[0]);
+		this.getAction(objectNames[0], actions[0], testData);
+		int i=0;
+		if(this.isErrorMessageDisplayed==true){
+			i=1;
+		}
+		for(int j=i;j<=objectNames.length-1;j++){
+			testData = this.getTestData(objectNames[j]);
+			objectInfo = this.getObjectInfo(this.currentPageName, objectNames[j]);
+			locator_Type = this.getObjectLocatorType(objectInfo); 
+			locator_Value = this.getObjectLocatorValue(objectInfo);
+			this.getAction(objectNames[j], actions[j], testData);
+		}
 	}
 	public void getAction(String objectName, String action, String testData) throws Exception{
 		switch(action.toLowerCase()){
@@ -788,6 +825,10 @@ public class Util extends CSV_Reader{
 					LOGS.info("> Clicking Logo");
 					changePassword(testData);
 					break;
+				case "checkiflistitemexists":
+					LOGS.info("> Checking if list item exists");
+					checkIfListItemExists(locator_Type, locator_Value,testData);
+					break;
 			}
 	}
 
@@ -824,8 +865,8 @@ public class Util extends CSV_Reader{
 		WebDriverWait wait = new WebDriverWait(driver, this.globalWaitTime);
 		boolean objectExists = false;
 		try{
-			  wait.until(ExpectedConditions.visibilityOf(object));
-			  objectExists = true;
+			wait.until(ExpectedConditions.elementToBeClickable(By.xpath(locator_Value)) );
+			objectExists = true;
 		}catch(StaleElementReferenceException ser){
 			System.out.println("Attempting to recover from StaleElementReferenceException");
 	        return  waitForObject(object);
@@ -834,7 +875,7 @@ public class Util extends CSV_Reader{
 			nse.printStackTrace();
 			objectExists = false;
 		}catch(Exception e){
-			e.printStackTrace();
+			e.printStackTrace(); 
 			this.setErrorFlag(true);
 	    	LOGS.info(object  + " is not displayed or has changed position");
 	    	LOGS.info(e.getMessage());
@@ -870,7 +911,7 @@ public class Util extends CSV_Reader{
 		List<WebElement> labels = driver.findElements(By.tagName("label")); 
 		for(WebElement label:labels){
 			String labelText  = label.getText().trim().replaceAll("[\\p{C}\\p{Z}]", "");
-			//System.out.println(label.getText().trim().replaceAll("[\\p{C}\\p{Z}]", ""));
+			System.out.println(label.getText().trim().replaceAll("[\\p{C}\\p{Z}]", ""));
 			if(labelText.equals(trimBtnText)){
 				if(waitForObject(label)==true){
 					((JavascriptExecutor)this.driver).executeScript("arguments[0].click()", label);
@@ -1075,6 +1116,55 @@ public class Util extends CSV_Reader{
 		}
 		return cellData;
 	}
+	public void checkIfListItemExists(String objectLocatorType, String locatorValue, String listItem) throws InterruptedException, IOException{
+		int totalNumberOfRecords = this.getTotalNumberOfRecords();
+		int numberOfRowsOnPage = this.getNumberOfRowsOnPage();
+		int recordNumber = 0;
+		boolean foundMenuItem = false;
+		String webTableXpath =  locatorValue.substring(0, locatorValue.lastIndexOf("table/")) + "table/tbody";
+		WebElement table = driver.findElement(findObject(objectLocatorType, webTableXpath));
+		if(recordNumber<totalNumberOfRecords){
+			for(int rowNum=1;rowNum<=numberOfRowsOnPage;rowNum++){
+				System.out.println("Record Num: " + recordNumber);
+				if(foundMenuItem==true || recordNumber==totalNumberOfRecords){break;}else{
+					System.out.println("Record #: " + recordNumber);
+					List<WebElement> columns  = table.findElements(By.tagName("td")); //find all tags with 'td' (columns)
+					 for (int colNum=0; colNum<columns.size(); colNum++){
+						recordNumber++;
+						String columnText = columns.get(colNum).getText();
+						System.out.println(columns.get(colNum).getText());
+						if(columnText.replaceAll("\\s","").trim().equals(listItem.replaceAll("\\s","").trim())){
+							System.out.println(columnText);
+							foundMenuItem = true;
+							break;
+						}
+					}
+				}
+				if(waitForObject("Right arrow", "xpath", "//img[contains(@src,'" + "pagination-right-arrow.png" + "')]")==true){
+					WebElement nextPageArrow = driver.findElement(By.xpath("//img[contains(@src,'" + "pagination-right-arrow.png" + "')]"));
+					((JavascriptExecutor)this.driver).executeScript("arguments[0].click()", nextPageArrow);
+				}
+			}
+			System.out.println("----");
+		}
+	}
+	public int getTotalNumberOfRecords() throws IOException{
+		int totalNumberOfRecords = 0;
+		if(waitForObject("Number of Rows", "xpath", "//td[contains(@class,'" + "icePnlGrdCol2 graDynamicDataTablePaginatorLayoutCol2" + "')]/span[contains(@class,'" + "iceOutFrmt" + "')]") == true){
+			WebElement rows = driver.findElement(By.xpath("//span[contains(@class,'" + "iceOutFrmt" + "')]"));
+			String rowNumberText = rows.getText();
+			totalNumberOfRecords = Integer.parseInt(rowNumberText.substring(rowNumberText.lastIndexOf("of") + 3));
+		}
+		return totalNumberOfRecords;
+	}
+	public int getNumberOfRowsOnPage(){
+		int numberOfRowsOnPage = 0;
+		WebElement rows = driver.findElement(By.xpath("//span[contains(@class,'" + "iceOutFrmt" + "')]"));
+		String rowNumberText = rows.getText();
+		System.out.println(rowNumberText.substring(9,(rowNumberText.indexOf("of")-1)));
+		numberOfRowsOnPage = Integer.parseInt(rowNumberText.substring(9,(rowNumberText.indexOf("of")-1)));
+		return numberOfRowsOnPage;
+	}
 	public void clickListMenuItem(String objectLocatorType, String locatorValue, String listItem) throws InterruptedException, IOException{
 		String webTableXpath = null;
 		String xpathSubString = null;
@@ -1143,6 +1233,7 @@ public class Util extends CSV_Reader{
 			}
 		}
 	}
+	
 	public void clickLink(String objectLocatorType, String locatorValue) throws Exception{
 		if(waitForObject("Link", objectLocatorType, locatorValue) == true){
 			WebElement link = driver.findElement(findObject(objectLocatorType, locatorValue));
@@ -1156,24 +1247,6 @@ public class Util extends CSV_Reader{
 			((JavascriptExecutor)this.driver).executeScript("arguments[0].click()", menuItem);
 		}
 	}
-	public int getRowNumberOfListItem(String objectLocatorType, String locatorValue, String listItem){
-		WebElement table = driver.findElement(findObject(objectLocatorType, locatorValue));
-		List<WebElement> rows  = table.findElements(By.tagName("tr")); //find all tags with 'tr' (rows)
-		//System.out.println("Total Rows: " + rows.size());
-		for (int rowNum=0; rowNum<rows.size(); rowNum++) {
-			List<WebElement> columns  = table.findElements(By.tagName("td")); //find all tags with 'td' (columns)
-			//System.out.println("Total Columns: " + columns.size());
-			 for (int colNum=0; colNum<columns.size(); colNum++){
-				String cellValue = columns.get(colNum).getText().toLowerCase();
-				if(cellValue.equals(listItem.toLowerCase())){
-					System.out.print(cellValue);
-					listItemRow = rowNum;
-					break;
-				}
-			}
-		}
-		return listItemRow;
-	}
 	public void enterText(String objectLocatorType, String locatorValue, String text) throws IOException, InterruptedException{
 		if(waitForObject("Text box", objectLocatorType, locatorValue) == true){
 			WebElement textBox = driver.findElement(findObject(objectLocatorType, locatorValue));
@@ -1186,6 +1259,7 @@ public class Util extends CSV_Reader{
 		}
 	}
 	public void reEnterText(String objectLocatorType, String locatorValue) throws IOException, InterruptedException{
+		String textBoxLabelXpath = locatorValue.substring(0, locatorValue.lastIndexOf("/tr"));
 		WebElement textBox = driver.findElement(findObject(objectLocatorType, locatorValue));
 		String textInTextBox = textBox.getAttribute("value");
 		int incrementedNumber = 0;
@@ -1203,8 +1277,12 @@ public class Util extends CSV_Reader{
         }else{incrementedNumber = incrementedNumber + 1;}
         textWithIncrementedNumber = textWithoutNumbers + incrementedNumber;
 		try{
-			textBox.clear();
+			/*textBox.clear();
+			textBox.sendKeys(textWithIncrementedNumber);*/
+			JavascriptExecutor js = (JavascriptExecutor)driver;
+			js.executeScript("arguments[0].value = '';", textBox);
 			textBox.sendKeys(textWithIncrementedNumber);
+			driver.findElement(By.xpath(textBoxLabelXpath)).click();
 		}catch(Exception e1){
 			textBox.sendKeys(textWithIncrementedNumber);
 		}
