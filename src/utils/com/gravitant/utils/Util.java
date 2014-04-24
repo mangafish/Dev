@@ -631,28 +631,10 @@ public class Util extends CSV_Reader{
 		return dataTestData;
 	}
 	public void executeAction(String pageName, String objectName, String action) throws Exception{
-		//if(objectName.contains("[") && this.isConditionalAction(action)==true){
 		if(objectName.contains("[")){
 			String[] objectNames = objectName.replace("[", "").replace("]", "").split(",");
 			String[] actions = action.replace("[", "").replace("]","").split(",");
 			this.runConditionalAction(objectNames, actions);
-			/*if(isErrorMessageDisplayed==true){
-				for(int i=1;i<=objectNames.length-1;i++){
-					testData = this.getTestData(objectNames[i]);
-					objectInfo = this.getObjectInfo(pageName, objectNames[i]);
-					locator_Type = this.getObjectLocatorType(objectInfo); 
-					locator_Value = this.getObjectLocatorValue(objectInfo);
-					this.getAction(objectNames[i], actions[i], testData);
-				}
-			}else{
-				for(int i=0;i<=objectNames.length-1;i++){
-					testData = this.getTestData(objectNames[i]);
-					objectInfo = this.getObjectInfo(pageName, objectNames[i]);
-					locator_Type = this.getObjectLocatorType(objectInfo); 
-					locator_Value = this.getObjectLocatorValue(objectInfo);
-					this.getAction(objectNames[i], actions[i], testData);
-				}
-			}*/
 	    }else{
 	    	testData = this.getTestData(objectName);
 	    	objectInfo = this.getObjectInfo(pageName, objectName);
@@ -1118,34 +1100,39 @@ public class Util extends CSV_Reader{
 	}
 	public void checkIfListItemExists(String objectLocatorType, String locatorValue, String listItem) throws InterruptedException, IOException{
 		int totalNumberOfRecords = this.getTotalNumberOfRecords();
-		int numberOfRowsOnPage = this.getNumberOfRowsOnPage();
 		int recordNumber = 0;
 		boolean foundMenuItem = false;
+		WebElement table = null;
 		String webTableXpath =  locatorValue.substring(0, locatorValue.lastIndexOf("table/")) + "table/tbody";
-		WebElement table = driver.findElement(findObject(objectLocatorType, webTableXpath));
-		if(recordNumber<totalNumberOfRecords){
-			for(int rowNum=1;rowNum<=numberOfRowsOnPage;rowNum++){
-				System.out.println("Record Num: " + recordNumber);
-				if(foundMenuItem==true || recordNumber==totalNumberOfRecords){break;}else{
-					System.out.println("Record #: " + recordNumber);
-					List<WebElement> columns  = table.findElements(By.tagName("td")); //find all tags with 'td' (columns)
-					 for (int colNum=0; colNum<columns.size(); colNum++){
-						recordNumber++;
-						String columnText = columns.get(colNum).getText();
-						System.out.println(columns.get(colNum).getText());
+		int numberOfRowsOnPage = this.getNumberOfRowsOnPage();
+		for(int rowNum=1;rowNum<=numberOfRowsOnPage;rowNum++){
+			waitForObject("Table List", "xpath",webTableXpath);
+			table = driver.findElement(findObject(objectLocatorType, webTableXpath));
+			List<WebElement> columns  = table.findElements(By.tagName("td"));
+			List<WebElement> rows  = table.findElements(By.tagName("tr"));
+			int numberOfRecords=columns.size();
+			int numberOfRows=rows.size();
+			if(recordNumber<=totalNumberOfRecords && waitForObject("Table List", "xpath", webTableXpath)==true){
+				if(foundMenuItem==true){break;}else{
+					int recordNum;
+					for(recordNum=0; recordNum<numberOfRecords; recordNum++){
+						table = driver.findElement(findObject(objectLocatorType, webTableXpath));
+						List<WebElement> column  = table.findElements(By.tagName("td"));
+						String columnText = column.get(recordNum).getText();
+						//System.out.println(column.get(recordNum).getText());
 						if(columnText.replaceAll("\\s","").trim().equals(listItem.replaceAll("\\s","").trim())){
-							System.out.println(columnText);
-							foundMenuItem = true;
+							//System.out.println(columnText);
+							foundMenuItem = true; 
 							break;
 						}
 					}
+					recordNumber = recordNumber + numberOfRows;
 				}
-				if(waitForObject("Right arrow", "xpath", "//img[contains(@src,'" + "pagination-right-arrow.png" + "')]")==true){
+				if(foundMenuItem!=true && waitForObject("Right arrow", "xpath", "//img[contains(@src,'" + "pagination-right-arrow.png" + "')]")==true){
 					WebElement nextPageArrow = driver.findElement(By.xpath("//img[contains(@src,'" + "pagination-right-arrow.png" + "')]"));
 					((JavascriptExecutor)this.driver).executeScript("arguments[0].click()", nextPageArrow);
 				}
 			}
-			System.out.println("----");
 		}
 	}
 	public int getTotalNumberOfRecords() throws IOException{
