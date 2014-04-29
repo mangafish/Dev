@@ -89,39 +89,12 @@ public class RunTests{
 	public SimpleDateFormat dateFormat = new SimpleDateFormat("hh:mm a");
 	public String currentTime = dateFormat.format(cal.getTime()).replaceAll(":","-");
 	public String path =  getClass().getClassLoader().getResource(".").getPath().toString();
-	private static JTextField textField;
 	/******************************************************************************************************/
 
 	public static void main(String[] args) throws Exception{
 		RunTests test = new RunTests(); 
 		test.start();
-		/*JFrame f = new JFrame("A JFrame");
-		f.getContentPane().setBackground(SystemColor.inactiveCaption);
-		f.getContentPane().setLayout(null);
-		
-		JTextArea txtrPathToAutomated = new JTextArea();
-		txtrPathToAutomated.setBackground(SystemColor.inactiveCaption);
-		txtrPathToAutomated.setText("Path to Automated tests");
-		txtrPathToAutomated.setBounds(12, 13, 215, 22);
-		f.getContentPane().add(txtrPathToAutomated);
-		
-		textField = new JTextField();
-		textField.setBounds(346, 13, 116, 22);
-		f.getContentPane().add(textField);
-		textField.setColumns(10);
-		
-		JButton btnBrowse = new JButton("Browse");
-		btnBrowse.setBounds(485, 12, 97, 25);
-		f.getContentPane().add(btnBrowse);
-		f.setFont(new Font("Arial", Font.PLAIN, 11));
-		f.setBackground(SystemColor.desktop);
-		f.setIconImage(Toolkit.getDefaultToolkit().getImage(RunTests.class.getResource("/engine.png")));
-		f.setTitle("Test Engine");
-	      f.setSize(990, 541);
-	      f.setLocation(300,200);
-	      f.setVisible(true);*/
  	}
-	
 	/**
 	 * Method reads the TestsToRun text file and kicks off tests mentioned in the file
 	 * @throws Exception
@@ -144,7 +117,6 @@ public class RunTests{
 		dbName = util.getTestConfigProperty("Db Name");
 		dbUsername = util.getTestConfigProperty("Db Username");
 		dbPassword = util.getTestConfigProperty("Db Password");
-		//util.changePassword("(gravitant123#,cm-mm-admin@gravitant.com,Gravitant1234,Gravitant123)");
 		//******* Set log file location ****************//
 		System.setProperty("TestEngineLog", testEnginePath + "\\TestEngineLog\\TestEngineLog.log");
 		//System.out.println(System.getProperty("TestEngineLog"));

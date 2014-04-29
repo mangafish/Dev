@@ -410,14 +410,6 @@ public class Util extends CSV_Reader{
        	}
 		return fileExists;
 	}
-	public int getRowCount(List<?> testCaseContent) throws IOException{
-		int numberOfRows = 0;
-		for (Object object : testCaseContent){
-			numberOfRows++;
-		 }
-		return numberOfRows;
-	}
-	
 	public String setCurrentTestName(String currentTest){
 		currentTestName = currentTest;
 		return currentTestName;
@@ -498,22 +490,23 @@ public class Util extends CSV_Reader{
 	}
 	
 	public String[] getObjectInfo(String pageName, String objectName) throws Exception{
-		objectMapFileName = this.getObjectMapFilePath(pageName);
 		String[] objectInfo = null;
-		CSVReader objectMapFileReader = new CSVReader(new FileReader(objectMapFileName));
-        String [] objectRow = null;
-        while((objectRow = objectMapFileReader.readNext()) != null){
-        	if(!objectRow[0].equals("Object_Name") && objectRow[0].equals(objectName)){
-        		objectInfo = objectRow;
-        		break;
-        	}else{
-        		objectInfo = null;
-        	}
-        }
-        objectMapFileReader .close();
+		if(pageName!="null"){
+			objectMapFileName = this.getObjectMapFilePath(pageName);
+			CSVReader objectMapFileReader = new CSVReader(new FileReader(objectMapFileName));
+	        String [] objectRow = null;
+	        while((objectRow = objectMapFileReader.readNext()) != null){
+	        	if(!objectRow[0].equals("Object_Name") && objectRow[0].equals(objectName)){
+	        		objectInfo = objectRow;
+	        		break;
+	        	}else{
+	        		objectInfo = null;
+	        	}
+	        }
+	        objectMapFileReader .close();
+		}
 		return objectInfo;
 	}
-	
 	public String getObjectLocatorType(String[] objectInfo){
 		//System.out.println(Arrays.toString(objectInfo));
 		String locator_Type = null;
@@ -570,10 +563,6 @@ public class Util extends CSV_Reader{
 		this.testDataFilePath = this.findFile(this.automatedTestsFolderPath + "\\" + this.componentName, pageName + ".csv");
 		return testDataFilePath;
 	}
-	
-	/*public void setTestDataFilePath(String path){
-		automatedTestsFolderPath  = path;
-	}*/
 	public String getTestData(String objectName) throws Exception{
 		String testData = null;
 		if(objectName.length()<1){
@@ -637,11 +626,18 @@ public class Util extends CSV_Reader{
 			String[] objectNames = objectName.replace("[", "").replace("]", "").split(",");
 			String[] actions = action.replace("[", "").replace("]","").split(",");
 			this.runConditionalAction(objectNames, actions);
-	    }else{
-	    	testData = this.getTestData(objectName);
-	    	objectInfo = this.getObjectInfo(pageName, objectName);
+	    }
+		testData = this.getTestData(objectName);
+		if(pageName.length()>0){
+			objectInfo = this.getObjectInfo(pageName, objectName);
 			locator_Type = this.getObjectLocatorType(objectInfo);
 			locator_Value = this.getObjectLocatorValue(objectInfo);
+	    	this.getAction(objectName, action, testData);
+		}
+		else{
+			objectInfo = null;
+			locator_Type = null;
+			locator_Value = null;
 	    	this.getAction(objectName, action, testData);
 	    }
 	}
@@ -696,7 +692,6 @@ public class Util extends CSV_Reader{
 					break;
 				case "selectradiobuttonitem":
 					LOGS.info("> Selecting radio item: " + testData + " in " + objectName);
-					//selectRadioButtonItem(locator_Type, locator_Value, testData);
 					clickRadioButtonItem(locator_Type, locator_Value, testData);
 	  				break;
 				case "switchtopopup":
@@ -799,10 +794,6 @@ public class Util extends CSV_Reader{
 					LOGS.info("> Clicking Logo");
 					logout();
 					break;
-				case "checkiferrormessagedisplays":
-					LOGS.info("> Checking if error message displays on " + this.currentPageName);
-					checkIfErrorMessageDisplays(locator_Type, locator_Value,testData);
-					break;
 				case "changepassword":
 					LOGS.info("> Clicking Logo");
 					changePassword(testData);
@@ -867,14 +858,6 @@ public class Util extends CSV_Reader{
 		}
 		return objectExists;
 	}
-	public void waitForSelectBoxOption() throws IOException, InterruptedException{
-		int sleepTime = 2000;
-		boolean objectExists = false;
-		while(sleepTime<this.globalWaitTime){
-			Thread.sleep(sleepTime);
-			sleepTime = sleepTime*2;
-		}
-	}
 	public boolean setErrorFlag(boolean errorFlag){
 		return this.errorFlag = errorFlag;
 	}
@@ -905,7 +888,6 @@ public class Util extends CSV_Reader{
 	public void clickLinkWithText(String objectLocatorType, String locatorValue, String buttonText) throws IOException{
 		List<WebElement> links = driver.findElements(By.tagName("a")); 
 		for(WebElement link:links){
-			//System.out.println(label.getText());
 			if(link.getText().equals(buttonText)){
 				((JavascriptExecutor)this.driver).executeScript("arguments[0].click()", link);
 		  } 
@@ -981,8 +963,6 @@ public class Util extends CSV_Reader{
 		Thread.sleep(2000);
 		List<WebElement> links = driver.findElements(By.tagName("a")); 
 		for(WebElement link:links){
-			//String linkText = link.getText().trim().replaceAll("[\\p{C}\\p{Z}]", "");
-			//System.out.println(link.getText().trim().replaceAll("[\\p{C}\\p{Z}]", ""));
 			if(link.getText().trim().replaceAll("[\\p{C}\\p{Z}]", "").equals("Logout")){
 				((JavascriptExecutor)this.driver).executeScript("arguments[0].click()", link);
 				break;
@@ -1060,11 +1040,13 @@ public class Util extends CSV_Reader{
 		String url = this.environment.substring(8);
 		Properties prop = new Properties();
 		prop.put(Context.INITIAL_CONTEXT_FACTORY, "com.sun.jndi.ldap.LdapCtxFactory");
-		prop.put(Context.PROVIDER_URL, "ldaps://" + url + ":636/");
+		prop.put(Context.PROVIDER_URL, "ldaps://" + url + ":389/");
+		//prop.put(Context.PROVIDER_URL, "ldaps://" + url + ":636/");
 		prop.put(Context.REFERRAL, "follow");
-		prop.put(Context.SECURITY_PROTOCOL, "ssl");
+		//prop.put(Context.SECURITY_PROTOCOL, "ssl");
 		prop.put(Context.SECURITY_AUTHENTICATION, "simple");
-		prop.put(Context.SECURITY_PRINCIPAL, "cn=root");
+		//prop.put(Context.SECURITY_PRINCIPAL, "cn=root");
+		prop.put(Context.SECURITY_PRINCIPAL, "uid=root");
 		prop.put(Context.SECURITY_CREDENTIALS, adminPassword);
 		prop.put("java.naming.ldap.factory.socket", MySSLSocketFactory.class.getName());
 		try{
@@ -1080,7 +1062,7 @@ public class Util extends CSV_Reader{
 		      mods[0] = new ModificationItem(DirContext.REMOVE_ATTRIBUTE, new BasicAttribute("userPassword", ""));
 		      mods[1] = new ModificationItem(DirContext.ADD_ATTRIBUTE, new BasicAttribute("userPassword", newPassword));
 
-		      String theUserName="uid=" + userId + ", OU=users, DC=qa10, DC=mygravitant, DC=com";
+		      String theUserName="uid=" + userId + ", OU=users, DC=qa3, DC=mygravitant, DC=com";
 	 	      contx.modifyAttributes(theUserName, mods);
 		      LOGS.info("Changed Password for user: " +  userId + " successfully");
 		      contx.close();
@@ -1187,18 +1169,6 @@ public class Util extends CSV_Reader{
 			}
 		}
 	}
-	private WebElement getObject(String locatorType, String locatorValue){
-		WebElement object = driver.findElement(findObject(locatorType, locatorValue));
-		return object;
-	}
-	private static Function<WebDriver,WebElement> presenceOfElementLocated(final By locator) {
-	    return new Function<WebDriver, WebElement>() {
-	        @Override
-	        public WebElement apply(WebDriver driver) {
-	            return driver.findElement(locator);
-	        }
-	    };
-	}
 	public int getTotalNumberOfRecords() throws IOException{
 		int totalNumberOfRecords = 0;
 		if(waitForObject("Number of Rows", "xpath", "//td[contains(@class,'" + "icePnlGrdCol2 graDynamicDataTablePaginatorLayoutCol2" + "')]/span[contains(@class,'" + "iceOutFrmt" + "')]") == true){
@@ -1216,75 +1186,6 @@ public class Util extends CSV_Reader{
 		numberOfRowsOnPage = Integer.parseInt(rowNumberText.substring(9,(rowNumberText.indexOf("of")-1)));
 		return numberOfRowsOnPage;
 	}
-	/*public void clickListMenuItem(String objectLocatorType, String locatorValue, String listItem) throws InterruptedException, IOException{
-		String webTableXpath = null;
-		String xpathSubString = null;
-		String menuXpath = null;
-		boolean foundMenuItem = false;
-		webTableXpath =  locatorValue.substring(0, locatorValue.lastIndexOf("table/")) + "table/tbody";
-		//System.out.println("Table xpath: " + webTableXpath);
-		if(waitForObject(listItem, objectLocatorType, locatorValue) == true){
-			WebElement table = driver.findElement(findObject(objectLocatorType, webTableXpath));
-			List<WebElement> rows  = table.findElements(By.tagName("tr")); 
-			int numberOfRows = rows.size();
-			if(numberOfRows==1){
-				WebElement row = driver.findElement(findObject(objectLocatorType, webTableXpath + "/tr"));
-				xpathSubString = locatorValue.substring(locatorValue.lastIndexOf("/tr"));
-				List<WebElement> columns  = row.findElements(By.tagName("td"));
-				int numberOfColumns = columns.size();
-				for(int colNum=0; colNum<numberOfColumns; colNum++){
-					String cellText = columns.get(colNum).getText().trim();
-					if(cellText.contains(listItem.trim())){
-						xpathSubString = locatorValue.substring(locatorValue.lastIndexOf("/tr"));
-						menuXpath = webTableXpath + xpathSubString;
-						try{
-							WebElement menu =driver.findElement(findObject(objectLocatorType, menuXpath));
-							((JavascriptExecutor)this.driver).executeScript("arguments[0].click()", menu);
-							break;
-						}catch(Exception e){
-							e.printStackTrace();
-							this.setErrorFlag(true);
-					    	LOGS.info(listItem  + " is not displayed or has changed position");
-							this.writeFailedStepToTempResultsFile(currentResultFilePath, this.reportEvent(this.currentTestName, this.currentTestStepNumber, this.currentTestStepName, listItem + " is not displayed or has changed position."));
-							this.captureScreen(this.currentTestName);
-					    	LOGS.info(e.getMessage());
-					    	this.msgbox("Cannot find: " + listItem + "\n Timeout limit reached.");
-						}
-					}
-				}
-			}else{
-				for(int rowNum=1; rowNum<=numberOfRows;rowNum++){
-					if(foundMenuItem==true){break;}else{
-						WebElement row = driver.findElement(findObject(objectLocatorType, webTableXpath + "/tr[" + rowNum + "]"));
-						List<WebElement> columns  = row.findElements(By.tagName("td")); 
-						int numberOfColumns = columns.size();
-						for(int colNum=0; colNum<numberOfColumns; colNum++){
-							String cellText = columns.get(colNum).getText().trim();
-							if(cellText.contains(listItem.trim())){
-								xpathSubString = locatorValue.substring(locatorValue.lastIndexOf("/td["));
-								menuXpath = webTableXpath + "/tr[" + rowNum + "]" + xpathSubString;
-								try{
-									WebElement menu =driver.findElement(findObject(objectLocatorType, menuXpath));
-									((JavascriptExecutor)this.driver).executeScript("arguments[0].click()", menu);
-									foundMenuItem = true;
-									break;
-								}catch(Exception e){
-									e.printStackTrace();
-									this.setErrorFlag(true);
-							    	LOGS.info(listItem  + " is not displayed or has changed position");
-									this.writeFailedStepToTempResultsFile(currentResultFilePath, this.reportEvent(this.currentTestName, this.currentTestStepNumber, this.currentTestStepName, listItem + " is not displayed or has changed position."));
-									this.captureScreen(this.currentTestName);
-							    	LOGS.info(e.getMessage());
-							    	this.msgbox("Cannot find: " + listItem + "\n Timeout limit reached.");
-								}
-							}
-						}
-					}
-				}
-			}
-		}
-	}*/
-	
 	public void clickLink(String objectLocatorType, String locatorValue) throws Exception{
 		if(waitForObject("Link", objectLocatorType, locatorValue) == true){
 			WebElement link = driver.findElement(findObject(objectLocatorType, locatorValue));
@@ -1328,8 +1229,6 @@ public class Util extends CSV_Reader{
         }else{incrementedNumber = incrementedNumber + 1;}
         textWithIncrementedNumber = textWithoutNumbers + incrementedNumber;
 		try{
-			/*textBox.clear();
-			textBox.sendKeys(textWithIncrementedNumber);*/
 			JavascriptExecutor js = (JavascriptExecutor)driver;
 			js.executeScript("arguments[0].value = '';", textBox);
 			textBox.sendKeys(textWithIncrementedNumber);
@@ -1364,7 +1263,6 @@ public class Util extends CSV_Reader{
 		List<WebElement> labels = driver.findElements(By.tagName("label")); 
 		for(WebElement label:labels){
 			String labelText  = label.getText().trim().replaceAll("[\\p{C}\\p{Z}]", "");
-			//System.out.println(label.getText().trim().replaceAll("[\\p{C}\\p{Z}]", ""));
 			if(labelText.equals(trimRadioButtonLabel)){
 				if(waitForObject(label)==true){
 					((JavascriptExecutor)this.driver).executeScript("arguments[0].click()", label);
@@ -1372,40 +1270,6 @@ public class Util extends CSV_Reader{
 				}
 		  }  
 		} 
-	}
-	public void selectRadioButtonItem(String objectLocatorType, String locatorValue, String testData) throws IOException, InterruptedException{
-		Thread.sleep(2000);
-		WebElement radioButton = null;
-		switch(objectLocatorType){
-			case "id":
-				waitForObject("Radio button", objectLocatorType, locatorValue.trim());
-				radioButton = driver.findElement(By.id(locatorValue.trim()));
-				break;
-			case "xpath":
-				try{
-					String radioButtonXpath = this.getRadioButtonXpath(objectLocatorType, locatorValue, testData);
-					if(waitForObject("Radio button", objectLocatorType, radioButtonXpath)==true){
-						radioButton = driver.findElement(By.xpath(radioButtonXpath));
-						((JavascriptExecutor)this.driver).executeScript("arguments[0].click()", radioButton);
-					}
-				}catch(Exception e){
-					String xpath = ".//tr/td/label[contains(text(),'" + testData + "')]";
-					//System.out.println(xpath);
-					if(waitForObject("Radio button", objectLocatorType, xpath) == true){
-						radioButton = driver.findElement(By.xpath(xpath));
-						radioButton.click();
-					}
-				}
-				break;
-			case "css":
-				String locatorwithTestData = locatorValue.replace(locatorValue.substring(13, locatorValue.length()), testData) + "']";
-				try{
-					driver.findElement(findObject(objectLocatorType, locatorwithTestData)).click();
-				}catch(Exception e){      
-					e.printStackTrace();
-				}
-				break;
-		}
 	}
 	public String getRadioButtonXpath(String objectLocatorType, String locatorValue, String radioButtonValue){
 		String trimRadioButtonValue = radioButtonValue.trim().toLowerCase().replaceAll("[\\p{C}\\p{Z}]", "");
@@ -1493,9 +1357,6 @@ public class Util extends CSV_Reader{
 	public void verifyTextPresent(String objectLocatorType, String locatorValue, String testData) throws IOException{
 		if(waitForObject("Text", objectLocatorType, locatorValue) == true){
 			String textToVerify = driver.findElement(findObject(objectLocatorType, locatorValue)).getText().trim().toLowerCase().toString().replaceAll(" ", "");
-			//System.out.println(textToVerify);
-			String testDataM = testData.replaceAll("\\s","");
-			//System.out.println(testDataM);
 			if(textToVerify.isEmpty()){
 				LOGS.info("Expected text: " +  "\"" + textToVerify + "\""  + " is not displayed");
 				try {
@@ -1532,20 +1393,6 @@ public class Util extends CSV_Reader{
 				} catch (IOException e) {
 					e.printStackTrace();
 				}
-			}
-		}
-	}
-	public void checkIfErrorMessageDisplays(String objectLocatorType, String locatorValue, String testData) throws IOException{
-		if(waitForObject("Text", objectLocatorType, locatorValue) == true){
-			String textToVerify = driver.findElement(findObject(objectLocatorType, locatorValue)).getText().trim().toLowerCase().toString().replaceAll(" ", "");
-			//System.out.println(textToVerify);
-			String cleanTestData = testData.trim().toLowerCase().toString().replaceAll("\\s","");
-			//System.out.println(testDataM);
-			if(textToVerify.equals(cleanTestData)){
-				this.isErrorMessageDisplayed = true;
-				/*StringSelection stringSelection = new StringSelection("true");
-				Toolkit.getDefaultToolkit().getSystemClipboard().setContents(stringSelection, null);*/
-		        //this.pasteValueFromClipboard(objectLocatorType, locatorValue);
 			}
 		}
 	}
@@ -1850,11 +1697,6 @@ public class Util extends CSV_Reader{
 			  break;
 	  }
 	} 
-	public boolean isUrlReachable(String environment) throws UnknownHostException, IOException{
-		int timeOut = 3000;
-		boolean status = InetAddress.getByName("198.46.49.73").isReachable(timeOut);
-		return true;
-	}
 	public  String createFolder(String path, String folderName){
 		new File(path + "\\" + folderName).mkdir();
 		return path + "\\" + folderName;
@@ -1902,24 +1744,6 @@ public class Util extends CSV_Reader{
     	}catch(IOException e){
     		e.printStackTrace();
     	}
-	}
-	public void mouseOver(WebDriver driver, WebElement webElement) {
-        String code = "var fireOnThis = arguments[0];"
-                    + "var evObj = document.createEvent('MouseEvents');"
-                    + "evObj.initEvent( 'mouseover', true, true );"
-                    + "fireOnThis.dispatchEvent(evObj);";
-        ((JavascriptExecutor) driver).executeScript(code, webElement);
-    }
-	
-	public void  generateRandomWord (){	   	            
-        Random myRandom = new Random();
-        for (int i = 0; i < 4; i++) {         
-           String Word = "" + 
-                (char) (myRandom.nextInt(26) + 'A') +
-                (char) (myRandom.nextInt(26) + 'a') +
-                (char) (myRandom.nextInt(26) + 'a') +
-                (char) (myRandom.nextInt(26) + 'a');               
-        }
 	}
 	public String getBrowserPath(String browserName){
 		String browserPath = null;
@@ -2046,11 +1870,5 @@ public class Util extends CSV_Reader{
 		}
 		writer.close();
 	}
-	
-	//stand alone runner
-	/*public  static void main(String arg[]) throws IOException{
-		//System.out.println(Util.getBrowserPath("firefox").toString());
-	}*/
-	
 }
 
